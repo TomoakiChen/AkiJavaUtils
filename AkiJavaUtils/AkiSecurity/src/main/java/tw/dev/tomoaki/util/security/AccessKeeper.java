@@ -17,7 +17,7 @@ public class AccessKeeper {
     public enum Method {
         NoHead(1, "去頭", "編碼後去頭"),
         NoTail(2, "去尾", "編碼後去尾"),
-        NoHeadAndNoTail(3, "去頭去尾", "編碼後去頭去尾"); 
+        NoHeadAndNoTail(3, "去頭去尾", "編碼後去頭去尾");
 
         private Integer code;
         private String summary;
@@ -69,31 +69,13 @@ public class AccessKeeper {
 
     }
 
-    private String prefixPk = "toMoaki";
-    private String suffixPk = "AccESsKeEPer";
+    private final String prefixPk = "toMoaki";
+    private final String suffixPk = "AccESsKeEPer";
+    private final String middlePk = "KuROsAki";
     private String theAlgorithm;
     private MessageDigest md;
+    private Boolean debugMode;
 
-//    final public static int NoHead = 1;
-//    final public static int NoTail = 2;
-//    final public static int NoHeadAndNoTail = 3;
-//    public PasswordUtil() {
-//        try {
-//            this.theAlgorithm = "MD5";
-//            md = MessageDigest.getInstance(theAlgorithm);
-//        } catch (NoSuchAlgorithmException ex) {
-//            Logger.getLogger(PasswordUtil.class.getName()).log(Level.SEVERE, null, ex);
-//        }
-//    }
-//
-//    public PasswordUtil(String algorithm) {
-//        try {
-//            setAlgorithm(algorithm);
-//            md = MessageDigest.getInstance(theAlgorithm);
-//        } catch (NoSuchAlgorithmException ex) {
-//            Logger.getLogger(PasswordUtil.class.getName()).log(Level.SEVERE, null, ex);
-//        }
-//    }
     protected AccessKeeper() {
     }
 
@@ -112,10 +94,45 @@ public class AccessKeeper {
             keeper.md = MessageDigest.getInstance(keeper.theAlgorithm);
             return keeper;
         }
+        
+        public static AccessKeeper create(Boolean debugMode) throws NoSuchAlgorithmException {
+            AccessKeeper keeper = AccessKeeper.Factory.create();
+            keeper.debugMode = true;
+            return keeper;
+        } 
     }
 
-    public String createPassowrd(String str) {
+    protected static String byte2Hex(byte b) {
+        String[] hex = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"};
+        int i = b;
+        if (i < 0) {
+            i += 256;
+        }
+        return hex[i / 16] + hex[i % 16];
+    }
+
+    protected String obtainPasswordCutHead(String oriPassword) {
+        String strongPassword = null;
+        int cutLength = oriPassword.length() / 3;
+        int startIndex = 0 + cutLength;
+        strongPassword = oriPassword.substring(startIndex, oriPassword.length());
+        return strongPassword;
+    }
+
+    protected String obtainPasswordCutTail(String oriPassword) {
+        String strongPassword = null;
+        int cutLength = oriPassword.length() / 3;
+        int endIndex = oriPassword.length() - cutLength;
+        strongPassword = oriPassword.substring(0, endIndex);
+        return strongPassword;
+    }
+
+    protected String createPassowrd(Object... inputs) {
         String thePassword = null;
+        String str = "";
+        for (Object input : inputs) {
+            str += input.toString() + middlePk;
+        }
         str = prefixPk + str + suffixPk;
         byte[] encodeByte = md.digest(str.getBytes());
         StringBuffer sb = new StringBuffer();
@@ -124,95 +141,54 @@ public class AccessKeeper {
         }
 
         thePassword = sb.toString();
-        //System.out.println("buffer and string : " + sb + "  " + thePassword);
         return thePassword;
     }
 
-    public String createStrongPassword(String str) {
-        return this.createStrongPassword(str, Method.NoHeadAndNoTail.getCode());
+    
+    
+    public String createStrongPassword(Object... inputs) {
+        return this.createStrongPassword(Method.NoHeadAndNoTail.getCode(), inputs);
     }
 
-    public String createStrongPassword(String str, int way) {
+    public String createStrongPassword(int way, Object... inputs) {
         String strongPassword = null;
-        int newLength;
-        int startIndex;
-        int endIndex;
-        String oriPassword = createPassowrd(str);
+        String oriPassword = createPassowrd(inputs);
 
-//        if (way == Method.NoHead) {
-//            strongPassword = this.CutHead(oriPassword);
-//        } else if (way == this.NoTail) {
-//            strongPassword = this.CutTail(oriPassword);
-//        } else if (way == this.NoHeadAndNoTail) {
-//            strongPassword = this.CutTail(this.CutHead(oriPassword));
-//        }
         Method designatedMethod = Method.codeOf(way);
         switch (designatedMethod) {
             case NoHead: {
-                strongPassword = this.CutHead(oriPassword);
+                strongPassword = this.obtainPasswordCutHead(oriPassword);
                 break;
             }
             case NoTail: {
-                strongPassword = this.CutTail(oriPassword);
+                strongPassword = this.obtainPasswordCutTail(oriPassword);
                 break;
             }
             case NoHeadAndNoTail: {
-                strongPassword = this.CutTail(this.CutHead(oriPassword));
+                strongPassword = this.obtainPasswordCutTail(this.obtainPasswordCutHead(oriPassword));
+                break;
             }
         }
         return strongPassword;
     }
+    
+    
 
-    public String createStrongPassword(int intStr, int way) {
-        String str = Integer.toString(intStr);
-        return this.createStrongPassword(str, way);
-    }
-
-    public static String byte2Hex(byte b) {
-        String[] hex = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"};
-        int i = b;
-        //System.out.println("byte and int : " + b + " " + i);
-        if (i < 0) {
-            i += 256;
-        }
-        return hex[i / 16] + hex[i % 16];
-    }
-
-    protected String CutHead(String oriPassword) {
-        String strongPassword = null;
-        int cutLength = oriPassword.length() / 3;
-        int startIndex = 0 + cutLength;
-        strongPassword = oriPassword.substring(startIndex, oriPassword.length());
-        //System.out.println("theStrongPassword " + strongPassword);
-        return strongPassword;
-    }
-
-    protected String CutTail(String oriPassword) {
-        String strongPassword = null;
-        int cutLength = oriPassword.length() / 3;
-        int endIndex = oriPassword.length() - cutLength;
-        strongPassword = oriPassword.substring(0, endIndex);
-        return strongPassword;
-    }
-
-    public boolean checkPassword(String id, String password) {
+    public Boolean checkPassword(String password, Object... inputs) {
         int method = Method.NoHeadAndNoTail.getCode();
-        return this.checkPassword(id, password, method);
+        return this.checkPassword(password, method, inputs);
     }
 
-    public boolean checkPassword(String id, String password, int method) {
-        String rightPassword = this.createStrongPassword(id, method);
-        if (password != null && password.equals(rightPassword)) {
-            return true;
-        } else {
-            return false;
-        }
+    public Boolean checkPassword(String password, int method, Object... inputs) {
+        String rightPassword = this.createStrongPassword(method, inputs);
+        return password != null && password.equals(rightPassword);
+
     }
 
-    public boolean checkPassword(String id, String password, String strMethod) {
+    public Boolean checkPassword(String password, String strMethod, Object... inputs) {
         if (strMethod != null && !"".equals(strMethod)) {
             Integer method = Integer.parseInt(strMethod);
-            return this.checkPassword(id, password, method);
+            return this.checkPassword(password, method, inputs);
         } else {
             return false;
         }
